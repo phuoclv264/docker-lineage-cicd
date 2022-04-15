@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+
+  <remote name="gitlab" fetch="https://gitlab.com" revision="main" />
+
+  <remove-project name="LineageOS/android_external_chromium-webview_patches" />
+  <remove-project name="LineageOS/android_external_chromium-webview_prebuilt_arm" />
+  <remove-project name="LineageOS/android_external_chromium-webview_prebuilt_arm64" />
+  <remove-project name="LineageOS/android_external_chromium-webview_prebuilt_x86" />
+  <remove-project name="LineageOS/android_frameworks_base" />
+  <remove-project name="LineageOS/android_packages_apps_Jelly" />
+  <remove-project name="LineageOS/android_packages_modules_Connectivity" />
+  <remove-project name="LineageOS/android_vendor_lineage" />
+
+  <project path="external/chromium" name="danielk43/android_external_chromium" remote="gitlab" clone-depth="1" />
+  <project path="external/chromium-webview" name="danielk43/android_external_chromium-webview" remote="gitlab" clone-depth="1" />
+  <project path="frameworks/base" name="danielk43/android_frameworks_base" />
+  <project path="packages/modules/Connectivity" name="danielk43/android_packages_modules_Connectivity" />
+  <project path="vendor/lineage" name="danielk43/android_vendor_lineage" />
+
+</manifest>

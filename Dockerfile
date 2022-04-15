@@ -113,6 +113,18 @@ ENV DELETE_OLD_LOGS 0
 # build type of your builds (user|userdebug|eng)
 ENV BUILD_TYPE "userdebug"
 
+# Set a non-default source for the repo init cmd
+ENV REPO_INIT "https://github.com/LineageOS/android"
+
+# Apply optional repo picks for Samsung 8890 on lineage-19.1
+ENV HEROLTE_PICKS false
+
+# Use local manifests for Samsung 8890 on lineage-19.1
+ENV MANIFESTS false
+
+# Remove any existing TARGET_EXCLUDES_AUDIOFX setting from common_mobile.mk
+ENV UNSET_AFX false
+
 # You can optionally specify a USERSCRIPTS_DIR volume containing these scripts:
 #  * begin.sh, run at the very beginning
 #  * before.sh, run after the syncing and patching, before starting the builds

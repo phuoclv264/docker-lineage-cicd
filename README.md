@@ -180,6 +180,10 @@ Other useful settings are:
  * `PARALLEL_JOBS`: Limit the number of parallel jobs to run (`-j` for `repo sync` and `mka`).
    By default, the build system should match the number of parallel jobs to the number of cpu
    cores on your machine. Reducing this number can help keeping it responsive for other tasks.   
+ * `REPO_INIT (https://github.com/LineageOS/android)`: Change the default android source
+ * `HEROLTE_PICKS (false)`: Apply optional 8890q LOS picks for Samsung herolte/hero2lte
+ * `MANIFESTS (false)`: Use local manifests for Samsung 8890 on >= lineage-19.0
+ * `UNSET_AFX (false)`: Unset TARGET_EXCLUDES_AUDIOFX if exists in common_mobile.mk
 
 The full list of settings, including the less interesting ones not mentioned in
 this guide, can be found in the [Dockerfile][dockerfile].

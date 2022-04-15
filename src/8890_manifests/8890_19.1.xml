@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+
+  <!-- Device Tree -->
+  <project path="device/samsung/hero2lte" name="8890q/android_device_samsung_hero2lte" />
+  <project path="device/samsung/herolte" name="8890q/android_device_samsung_herolte" />
+  <project path="device/samsung/universal8890-common" name="8890q/android_device_samsung_universal8890-common" />
+  <project path="device/samsung_slsi/sepolicy" name="LineageOS/android_device_samsung_slsi_sepolicy" />
+
+  <!-- Kernel -->
+  <project path="kernel/samsung/universal8890" name="8890q/android_kernel_samsung_universal8890" />
+
+  <!-- Lineage HW repos -->
+  <project path="hardware/samsung" name="LineageOS/android_hardware_samsung" />
+
+  <!-- Vendor Blobs -->
+  <project path="vendor/samsung" name="8890q/proprietary_vendor_samsung" clone-depth="1" />
+
+</manifest>

@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2044,SC2086
 
 # Docker build script
 # Copyright (c) 2017 Julian Xhokaxhiu
@@ -80,8 +81,9 @@ if [ "$LOCAL_MIRROR" = true ]; then
   echo ">> [$(date)] Copying '$LMANIFEST_DIR/*.xml' to '.repo/local_manifests/'"
   mkdir -p .repo/local_manifests
   rsync -a --delete --include '*.xml' --exclude '*' "$LMANIFEST_DIR/" .repo/local_manifests/
+  [ "$MANIFESTS" = true ] && rsync -a --include '*.xml' --exclude '*' /root/8890_manifests/ .repo/local_manifests/
 
-  rm -f .repo/local_manifests/proprietary.xml
+  rm -f .repo/local_manifests/proprietary.xml .repo/local_manifests/proprietary_gitlab.xml
   if [ "$INCLUDE_PROPRIETARY" = true ]; then
     wget -q -O .repo/local_manifests/proprietary.xml "https://raw.githubusercontent.com/TheMuppets/manifests/mirror/default.xml"
     /root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
@@ -163,17 +165,18 @@ for branch in ${BRANCH_NAME//,/ }; do
 
     echo ">> [$(date)] (Re)initializing branch repository" | tee -a "$repo_log"
     if [ "$LOCAL_MIRROR" = true ]; then
-      ( yes||: ) | repo init -u https://github.com/LineageOS/android.git --reference "$MIRROR_DIR" -b "$branch" &>> "$repo_log"
+      ( yes||: ) | repo init -u "$REPO_INIT".git --reference "$MIRROR_DIR" -b "$branch" &>> "$repo_log"
     else
-      ( yes||: ) | repo init -u https://github.com/LineageOS/android.git -b "$branch" &>> "$repo_log"
+      ( yes||: ) | repo init -u "$REPO_INIT".git -b "$branch" &>> "$repo_log"
     fi
 
     # Copy local manifests to the appropriate folder in order take them into consideration
     echo ">> [$(date)] Copying '$LMANIFEST_DIR/*.xml' to '.repo/local_manifests/'"
     mkdir -p .repo/local_manifests
     rsync -a --delete --include '*.xml' --exclude '*' "$LMANIFEST_DIR/" .repo/local_manifests/
+    [ "$MANIFESTS" = true ] && rsync -a --include '*.xml' --exclude '*' /root/8890_manifests/ .repo/local_manifests/
 
-    rm -f .repo/local_manifests/proprietary.xml
+    rm -f .repo/local_manifests/proprietary.xml .repo/local_manifests/proprietary_gitlab.xml
     if [ "$INCLUDE_PROPRIETARY" = true ]; then
       wget -q -O .repo/local_manifests/proprietary.xml "https://raw.githubusercontent.com/TheMuppets/manifests/$themuppets_branch/muppets.xml"
       /root/build_manifest.py --remote "https://gitlab.com" --remotename "gitlab_https" \
@@ -329,6 +332,39 @@ for branch in ${BRANCH_NAME//,/ }; do
             continue
         fi
 
+        # Remove TARGET_EXCLUDES_AUDIOFX user setting if exists in common_mobile.mk
+        [ "$UNSET_AFX" = true ] && sed -i "/^TARGET_EXCLUDES_AUDIOFX/d" vendor/lineage/config/common_mobile.mk
+
+        # Setup for Samsung 8890 lineage-19.1 builds
+        # https://github.com/8890q/patches
+        apply_8890_patches() {
+          for patch in $(find "${HEROLTE_PATCHES}" -type f -name "*.patch")
+            do repopath=$(basename "$(dirname ${patch})" | sed "s/_/\//g")
+            echo ">> [$(date)] Patching $(basename ${patch})" >> "$DEBUG_LOG"
+            cd "${repopath}"
+            patch --force -p1 -i "${patch}" &>> "$repo_log"
+            git add --all
+            git commit --all --message "Update $(basename ${patch})" &>> "$repo_log"
+            cd - > /dev/null
+          done
+          if [ "$HEROLTE_PICKS" = true ]; then
+            echo ">> [$(date)] Applying Samsung 8890 LineageOS picks" | tee -a "$repo_log"        
+            sh "${HEROLTE_PATCHES}"/picks.sh &>> "$repo_log"
+          fi
+        }
+
+        # Run the universal-8890 patches and git operations
+        if [[ "$codename" =~ ^hero2?lte ]]; then
+          echo ">> [$(date)] Patching Samsung 8890 LineageOS source" | tee -a "$repo_log"
+          HEROLTE_PATCHES="/root/8890_patches"
+          # shellcheck disable=SC2034
+          GIT_AUTHOR_NAME=$USER_NAME GIT_AUTHOR_EMAIL=$USER_MAIL
+
+          set +eu
+          apply_8890_patches
+          set -eu
+        fi
+
         if [ -f /root/userscripts/pre-build.sh ]; then
           echo ">> [$(date)] Running pre-build.sh for $codename" >> "$DEBUG_LOG"
           /root/userscripts/pre-build.sh "$codename" &>> "$DEBUG_LOG" || echo ">> [$(date)] Warning: pre-build.sh failed!"
@@ -337,9 +373,8 @@ for branch in ${BRANCH_NAME//,/ }; do
         # Start the build
         echo ">> [$(date)] Starting build for $codename, $branch branch" | tee -a "$DEBUG_LOG"
         build_successful=false
-        if (set +eu ; mka "${jobs_arg[@]}" bacon) &>> "$DEBUG_LOG"; then
 
-          # Move produced ZIP files to the main OUT directory
+        move_artifacts() {
           echo ">> [$(date)] Moving build artifacts for $codename to '$ZIP_DIR/$zipsubdir'" | tee -a "$DEBUG_LOG"
           cd out/target/product/"$codename"
           for build in lineage-*.zip; do
@@ -357,9 +392,14 @@ for branch in ${BRANCH_NAME//,/ }; do
           done &>> "$DEBUG_LOG"
           cd "$source_dir"
           build_successful=true
-        else
-          echo ">> [$(date)] Failed build for $codename" | tee -a "$DEBUG_LOG"
-        fi
+        }
+
+        # Compile then move OTA zip files to the main OUT directory
+        set +eu
+        mka "${jobs_arg[@]}" bacon &>> "$DEBUG_LOG" && move_artifacts
+        set -eu
+        
+        [ "$build_successful" == false ] && echo ">> [$(date)] Failed build for $codename" | tee -a "$DEBUG_LOG"
 
         # Remove old zips and logs
         if [ "$DELETE_OLD_ZIPS" -gt "0" ]; then
@@ -404,13 +444,16 @@ for branch in ${BRANCH_NAME//,/ }; do
             rm -rf ./* || true
           else
             cd "$source_dir"
-            (set +eu ; mka "${jobs_arg[@]}" clean) &>> "$DEBUG_LOG"
+
+            set +eu
+            mka "${jobs_arg[@]}" clean &>> "$DEBUG_LOG"
+            set -eu
+
+            [ "$MANIFESTS" = true ] && for i in /root/8890_manifests/*.xml; do rm -f .repo/local_manifests/"$(basename $i)"; done
           fi
         fi
-
       fi
     done
-
   fi
 done
 
