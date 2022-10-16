@@ -1,0 +1,4 @@
+[submodule "src/8890_patches"]
+	path = src/8890_patches
+	url = https://github.com/8890q/patches.git
+	branch = master
