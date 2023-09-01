@@ -125,6 +125,9 @@ ENV MANIFESTS false
 # Remove any existing TARGET_EXCLUDES_AUDIOFX setting from common_mobile.mk
 ENV UNSET_AFX false
 
+# Skip repo sync
+ENV SKIP_SYNC false;
+
 # You can optionally specify a USERSCRIPTS_DIR volume containing these scripts:
 #  * begin.sh, run at the very beginning
 #  * before.sh, run after the syncing and patching, before starting the builds
